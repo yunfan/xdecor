@@ -33,7 +33,18 @@ function enchanting.formspec(pos, tool)
 	minetest.get_meta(pos):set_string("formspec", formspec)
 end
 
-function enchanting.on_put(pos, listname, _, stack)
+function enchanting.is_owner(pos, player)
+	local meta = minetest.get_meta(pos)
+	local owner_name = meta:get_string("owner")
+	local player_name = player:get_player_name() or ""
+	return owner_name == player_name
+end
+
+function enchanting.on_put(pos, listname, _, stack, player)
+	if not enchanting.is_owner(pos, player) then
+		minetest.chat_send_player(player:get_player_name(), "You are not the owner of this enchanting table")
+		return
+	end
 	if listname == "tool" then
 		local tools_cat = {
 			["tool"] = {"pick", "axe", "shovel"},
@@ -68,7 +79,11 @@ function enchanting.fields(pos, _, fields)
 	end
 end
 
-function enchanting.dig(pos)
+function enchanting.dig(pos, player)
+	if not enchanting.is_owner(pos, player) then
+		minetest.chat_send_player(player:get_player_name(), "You are not the owner of this enchanting table")
+		return false
+	end
 	local inv = minetest.get_meta(pos):get_inventory()
 	return inv:is_empty("tool") and inv:is_empty("mese")
 end
@@ -82,7 +97,11 @@ local function allowed(tool)
 	return false
 end
 
-function enchanting.put(_, listname, _, stack)
+function enchanting.put(pos, listname, _, stack, player)
+	if not enchanting.is_owner(pos, player) then
+		minetest.chat_send_player(player:get_player_name(), "You are not the owner of this enchanting table")
+		return 0
+	end
 	local item = stack:get_name():match(":([%w_]+)")
 	if listname == "mese" and item == "mese_crystal" then
 		return stack:get_count()
@@ -93,7 +112,11 @@ function enchanting.put(_, listname, _, stack)
 	return 0
 end
 
-function enchanting.on_take(pos, listname)
+function enchanting.on_take(pos, listname, _, _, player)
+	if not enchanting.is_owner(pos, player) then
+		minetest.chat_send_player(player:get_player_name(), "You are not the owner of this enchanting table")
+		return
+	end
 	if listname == "tool" then
 		enchanting.formspec(pos, nil)
 	end
@@ -121,6 +144,15 @@ xdecor.register("enchantment_table", {
 	on_rotate = screwdriver.rotate_simple,
 	can_dig = enchanting.dig,
 	on_construct = enchanting.construct,
+
+	after_place_node = function(pos, placer)
+		local meta = minetest.get_meta(pos)
+		meta:set_string("owner", placer:get_player_name() or "")
+		meta:set_string("infotext", "Enchanting table (owned by " .. meta:get_string("owner") .. ")")
+		-- we dont support member yet, meta:set_string("members", "")
+		-- and this should only work with protection mod installed, since we use its own metadata format
+	end,
+
 	on_receive_fields = enchanting.fields,
 	on_metadata_inventory_put = enchanting.on_put,
 	on_metadata_inventory_take = enchanting.on_take,
