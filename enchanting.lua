@@ -37,7 +37,7 @@ function enchanting.is_owner(pos, player)
 	local meta = minetest.get_meta(pos)
 	local owner_name = meta:get_string("owner")
 	local player_name = player:get_player_name() or ""
-	return (owner_name == player_name) or (player_name == "")
+	return (owner_name == player_name) or (owner_name == "")
 end
 
 function enchanting.on_put(pos, listname, _, stack, player)
