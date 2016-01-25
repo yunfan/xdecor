@@ -1,7 +1,7 @@
 local enchanting = {}
 screwdriver = screwdriver or {}
 
-function enchanting.formspec(pos, tool)
+function enchanting.formspec(pos, num)
 	local formspec = [[ size[9,9;]
 			bgcolor[#080808BB;true]
 			background[0,0;9,9;ench_ui.png]
@@ -16,20 +16,15 @@ function enchanting.formspec(pos, tool)
 			tooltip[speed;Your speed is increased] ]]
 			..default.gui_slots..default.get_hotbar_bg(0.5,4.5)
 
-	local tool_fs = {
-		["tool"] = [[ image_button[3.9,0.85;4,0.92;bg_btn.png;fast;Efficiency]
-			image_button[3.9,1.77;4,1.12;bg_btn.png;durable;Durability] ]],
-		["armor"] = "image_button[3.9,0.85;4,0.92;bg_btn.png;strong;Strength]",
-		["sword"] = "image_button[3.9,2.9;4,0.92;bg_btn.png;sharp;Sharpness]",
-		["boots"] = [[ image_button[3.9,0.85;4,0.92;bg_btn.png;strong;Strength]
-				image_button[3.9,1.77;4,1.12;bg_btn.png;speed;Speed] ]] }
+	local tool_enchs = {
+		[[ image_button[3.9,0.85;4,0.92;bg_btn.png;fast;Efficiency]
+		image_button[3.9,1.77;4,1.12;bg_btn.png;durable;Durability] ]],
+		"image_button[3.9,0.85;4,0.92;bg_btn.png;strong;Strength]",
+		"image_button[3.9,2.9;4,0.92;bg_btn.png;sharp;Sharpness]",
+		[[ image_button[3.9,0.85;4,0.92;bg_btn.png;strong;Strength]
+		image_button[3.9,1.77;4,1.12;bg_btn.png;speed;Speed] ]] }
 
-	for cat in pairs(tool_fs) do
-		if tool == cat then
-			formspec = formspec..tool_fs[cat]
-		end
-	end
-
+	formspec = formspec..(tool_enchs[num] or "")
 	minetest.get_meta(pos):set_string("formspec", formspec)
 end
 
@@ -46,17 +41,12 @@ function enchanting.on_put(pos, listname, _, stack, player)
 		return
 	end
 	if listname == "tool" then
-		local tools_cat = {
-			["tool"] = {"pick", "axe", "shovel"},
-			["armor"] = {"chestplate", "leggings", "helmet"},
-			["sword"] = {"sword"}, ["boots"] = {"boots"} }
-
-		for cat, name in pairs(tools_cat) do
-		for _, n in pairs(name) do
-			if stack:get_name():find(n) then
-				enchanting.formspec(pos, cat)
+		for k, v in pairs({"axe, pick, shovel",
+				"chestplate, leggings, helmet",
+				"sword", "boots"}) do
+			if v:match(stack:get_name():match(":(.-)%_")) then
+				enchanting.formspec(pos, k)
 			end
-		end
 		end
 	end
 end
@@ -67,7 +57,7 @@ function enchanting.fields(pos, _, fields)
 	local tool = inv:get_stack("tool", 1)
 	local mese = inv:get_stack("mese", 1)
 	local orig_wear = tool:get_wear()
-	local mod, name = tool:get_name():match("([%w_]+):([%w_]+)")
+	local mod, name = tool:get_name():match("(.*):(.*)")
 	local enchanted_tool = mod..":enchanted_"..name.."_"..next(fields)
 
 	if mese:get_count() > 0 and minetest.registered_tools[enchanted_tool] then
@@ -90,25 +80,22 @@ end
 
 local function allowed(tool)
 	for item in pairs(minetest.registered_tools) do
-		if item:match("enchanted_"..tool) then
-			return true
-		end
+		if item:match("enchanted_"..tool) then return true end
 	end
 	return false
 end
 
-function enchanting.put(pos, listname, _, stack, player)
+function enchanting.put(_, listname, _, stack)
+	local item = stack:get_name():match("[^:]+$")
 	if not enchanting.is_owner(pos, player) then
 		minetest.chat_send_player(player:get_player_name(), "You are not the owner of this enchanting table")
 		return 0
 	end
-	local item = stack:get_name():match(":([%w_]+)")
 	if listname == "mese" and item == "mese_crystal" then
 		return stack:get_count()
 	elseif listname == "tool" and allowed(item) then
 		return 1 
 	end
-
 	return 0
 end
 
@@ -165,41 +152,41 @@ local function cap(str)
 end
 
  -- Higher number = stronger enchant.
-local use_factor = 1.2
-local times_subtractor = 0.1
-local damage_adder = 1
-local strength_factor = 1.2
-local speed_factor = 0.2
-local jump_factor = 0.2
+enchanting.uses = 1.2
+enchanting.times = 0.1
+enchanting.damages = 1
+enchanting.strength = 1.2
+enchanting.speed = 0.2
+enchanting.jump = 0.2
 
 local tools = {
-	--[[ Registration format :
+	--[[ Registration format:
 	 	[Mod name] = {
-	 		{materials},
-	 		{tool name, tool group, {enchantments}}
+	 		materials,
+	 		{tool name, tool group, enchantments}
 		 }
 	--]]
 	["default"] = {
-		{"steel", "bronze", "mese", "diamond"},
-		{"axe", "choppy", {"durable", "fast"}}, 
-		{"pick", "cracky", {"durable", "fast"}}, 
-		{"shovel", "crumbly", {"durable", "fast"}},
-		{"sword", "fleshy", {"sharp"}}
+		"steel, bronze, mese, diamond",
+		{"axe", "choppy", "durable, fast"}, 
+		{"pick", "cracky", "durable, fast"}, 
+		{"shovel", "crumbly", "durable, fast"},
+		{"sword", "fleshy", "sharp"}
 	},
 	["3d_armor"] = {
-		{"steel", "bronze", "gold", "diamond"},
-		{"boots", nil, {"strong", "speed"}},
-		{"chestplate", nil, {"strong"}},
-		{"helmet", nil, {"strong"}},
-		{"leggings", nil, {"strong"}}
+		"steel, bronze, gold, diamond",
+		{"boots", nil, "strong, speed"},
+		{"chestplate", nil, "strong"},
+		{"helmet", nil, "strong"},
+		{"leggings", nil, "strong"}
 	}
 }
 
 for mod, defs in pairs(tools) do
-for _, mat in pairs(defs[1]) do
+for material in defs[1]:gmatch("[%w_]+") do
 for _, tooldef in next, defs, 1 do
-for _, ench in pairs(tooldef[3]) do
-	local tool, group, material, enchant = tooldef[1], tooldef[2], mat, ench
+for enchant in tooldef[3]:gmatch("[%w_]+") do
+	local tool, group = tooldef[1], tooldef[2]
 	local original_tool = minetest.registered_tools[mod..":"..tool.."_"..material]
 
 	if original_tool then
@@ -212,13 +199,13 @@ for _, ench in pairs(tooldef[3]) do
 			local max_drop_level = original_tool.tool_capabilities.max_drop_level
 
 			if enchant == "durable" then
-				groupcaps[group].uses = math.ceil(original_groupcaps[group].uses * use_factor)
+				groupcaps[group].uses = math.ceil(original_groupcaps[group].uses * enchanting.uses)
 			elseif enchant == "fast" then
 				for i = 1, 3 do
-					groupcaps[group].times[i] = original_groupcaps[group].times[i] - times_subtractor
+					groupcaps[group].times[i] = original_groupcaps[group].times[i] - enchanting.times
 				end
 			elseif enchant == "sharp" then
-				fleshy = fleshy + damage_adder
+				fleshy = fleshy + enchanting.damages
 			end
 
 			minetest.register_tool(":"..mod..":enchanted_"..tool.."_"..material.."_"..enchant, {
@@ -237,15 +224,15 @@ for _, ench in pairs(tooldef[3]) do
 			local original_armor_groups = original_tool.groups
 			local armorcaps = table.copy(original_armor_groups)
 			local armorcaps = {}
-			armorcaps.not_in_creative_inventory=1
+			armorcaps.not_in_creative_inventory = 1
 
 			for armor_group, value in pairs(original_armor_groups) do
 				if enchant == "strong" then
-					armorcaps[armor_group] = math.ceil(value * strength_factor)
+					armorcaps[armor_group] = math.ceil(value * enchanting.strength)
 				elseif enchant == "speed" then
 					armorcaps[armor_group] = value
-					armorcaps.physics_speed = speed_factor
-					armorcaps.physics_jump = jump_factor
+					armorcaps.physics_speed = enchanting.speed
+					armorcaps.physics_jump = enchanting.jump
 				end
 			end
 

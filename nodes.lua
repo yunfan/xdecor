@@ -106,6 +106,8 @@ xpanes.register_pane("chainlink", {
 	}
 })
 
+-- The following nodedef is licensed under WTFPL for granting a possible re-use
+-- in Minetest Game (https://github.com/minetest/minetest_game). 
 xdecor.register("cobweb", {
 	description = "Cobweb",
 	drawtype = "plantlike",
@@ -181,7 +183,7 @@ local door_types = {
 
 for _, d in pairs(door_types) do
 	doors.register_door("xdecor:"..d[1].."_door", {
-		description = string.gsub(d[1]:gsub("^%l", string.upper), "_r", " R").." Door",
+		description = string.gsub(" "..d[1], "%W%l", string.upper):sub(2):gsub("_", " ").." Door",
 		inventory_image = "xdecor_"..d[1].."_door_inv.png",
 		groups = {choppy=3, cracky=3, oddly_breakable_by_hand=1, flammable=2, door=1},
 		tiles_bottom = {"xdecor_"..d[1].."_door_b.png", "xdecor_"..d[2]..".png"},
@@ -281,13 +283,17 @@ xdecor.register("lantern", {
 	}
 })
 
-xdecor.register("lightbox", {
-	description = "Light Box",
-	tiles = {"xdecor_lightbox.png"},
-	groups = {cracky=3, choppy=3, oddly_breakable_by_hand=2},
-	light_source = 13,
-	sounds = default.node_sound_glass_defaults()
-})
+for _, l in pairs({"iron", "wooden"}) do
+	xdecor.register(l.."_lightbox", {
+		description = l:gsub("^%l", string.upper).." Light Box",
+		tiles = {"xdecor_"..l.."_lightbox.png"},
+		groups = {cracky=3, choppy=3, oddly_breakable_by_hand=2},
+		light_source = 13,
+		sounds = default.node_sound_glass_defaults()
+	})
+end
+
+minetest.register_alias("xdecor:lightbox", "xdecor:wooden_lightbox")
 
 xdecor.register("packed_ice", {
 	drawtype = "normal",
@@ -340,11 +346,11 @@ xdecor.register("painting_1", {
 	},
 	on_construct = function(pos)
 		local node = minetest.get_node(pos)
-		minetest.set_node(pos, {name="xdecor:painting_"..math.random(1,4), param2=node.param2})
+		local random = math.random(4)
+		if random == 1 then return end
+		minetest.set_node(pos, {name="xdecor:painting_"..random, param2=node.param2})
 	end
 })
-
-minetest.register_alias("xdecor:painting", "xdecor:painting_1") -- legacy code
 
 for i = 2, 4 do
 	xdecor.register("painting_"..i, {
@@ -414,13 +420,12 @@ xdecor.register("stonepath", {
 	on_rotate = screwdriver.rotate_simple,
 	sounds = default.node_sound_stone_defaults(),
 	sunlight_propagates = true,
-	node_box = {
-		type = "fixed",
-		fixed = {{0, -0.5, 0, 0.375, -0.47, 0.375},
-			{-0.4375, -0.5, -0.4375, -0.0625, -0.47, -0.0625},
-			{-0.4375, -0.5, 0.125, -0.125, -0.47, 0.4375},
-			{0.125, -0.5, -0.375, 0.375, -0.47, -0.125}}
-	},
+	node_box = xdecor.pixelnodebox(16, {
+		{8,  0,  8, 6, 0.5, 6},
+		{1,  0,  1, 6, 0.5, 6},
+		{1,  0, 10, 5, 0.5, 5},
+		{10, 0,  2, 4, 0.5, 4}
+	}),
 	selection_box = xdecor.nodebox.slab_y(0.05)
 })
 
@@ -442,11 +447,9 @@ xdecor.register("table", {
 	tiles = {"xdecor_wood.png"},
 	groups = {choppy=3, oddly_breakable_by_hand=2, flammable=3},
 	sounds = default.node_sound_wood_defaults(),
-	node_box = {
-		type = "fixed",
-		fixed = {{-0.5, 0.4, -0.5, 0.5, 0.5, 0.5},
-			{-0.15, -0.5, -0.15, 0.15, 0.4, 0.15}}
-	}
+	node_box = xdecor.pixelnodebox(16, {
+		{0, 14, 0, 16, 2, 16}, {5.5, 0, 5.5, 5, 14, 6}
+	})
 })
 
 xdecor.register("tatami", {
@@ -454,9 +457,7 @@ xdecor.register("tatami", {
 	tiles = {"xdecor_tatami.png"},
 	wield_image = "xdecor_tatami.png",
 	groups = {snappy=3, flammable=3},
-	node_box = {
-		type = "fixed", fixed = {{-0.5, -0.5, -0.5, 0.5, -0.4375, 0.5}}
-	}
+	node_box = xdecor.nodebox.slab_y(0.0625)
 })
 
 xdecor.register("tv", {
