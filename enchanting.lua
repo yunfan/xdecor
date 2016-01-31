@@ -85,7 +85,7 @@ local function allowed(tool)
 	return false
 end
 
-function enchanting.put(_, listname, _, stack)
+function enchanting.put(pos, listname, _, stack, player)
 	local item = stack:get_name():match("[^:]+$")
 	if not enchanting.is_owner(pos, player) then
 		minetest.chat_send_player(player:get_player_name(), "You are not the owner of this enchanting table")
